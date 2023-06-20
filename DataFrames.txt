@@ -1,0 +1,312 @@
+
+installing pyspark:
+===================
+!pip install pyspark py4j
+
+
+
+creating spark session:
+=======================
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.master().appName().getOrCreate()
+
+
+
+Creating dataFrame from hdfs Location:
+======================================
+reading data from hdfs remote server
+df_hdfs = spark.read.format('csv').load('hdfs://172.16.38.131.8020/bigdata/cse/app_prod/cse.app_prod.csv')
+
+
+
+Reading CSV data into dataframe without header, schema?
+=======================================================
+df_csv = spark.read.format('csv').load('/content/sample_data/california_housing_test.csv')
+df_csv.show(10)
+
+
+
+Reading csv data into dataframe with Header and schema ?
+print dataframe type ,show dataframe,count rows and printSchema?
+================================================================
+df_csv1 = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sample_data/california_housing_test.csv')
+type(df_csv1)
+df_csv1.show(10)
+df_csv1.count()
+df_csv1.printSchema()
+
+
+
+Reading csv data into dataframe with Header and schema -(another way)?
+======================================================================
+df_another = spark.read.csv('/content/sample_data/california_housing_test.csv',header = True,inferSchema = True)
+df_another.show(10)
+df_another.printSchema()
+
+
+
+Reading csv dataframe with pipe seprated values ?
+show data frame,printSchema, count rows ?
+=================================================
+df_pipe = spark.read.format('csv').option('sep','|').option('header','true').option('inferSchema',True).option('nullValue','null').load('/content/emp_pipe.txt')
+df_pipe.show(10)
+df_pipe.printSchema()
+df_pipe.count()
+
+
+
+Reading csv dataframe with double pipe seprated values ?
+show data frame,printSchema, count rows ?
+========================================================
+df_double = spark.read.format('csv').option('sep','||').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/emp_double_pipe.txt')
+df_double.show(10)
+df_double.printSchema()
+df_double.count()
+
+
+
+Inspect Data?
+=============
+# display Content of df
+df_csv1.show(10) 
+
+
+# display Schema
+df_csv1.printSchema()
+
+
+#first row
+df_csv1.first()
+
+
+#head values
+df_csv1.head()
+
+
+#tail values
+df_csv1.tail(1)
+
+
+#takes some random from dataframe 
+df_csv1.take(2)
+
+
+# return column names and data types
+df_csv1.dtypes
+
+
+# compute summery satistics for dataframe
+df_csv1.describe().show()
+
+
+#count no.of rows
+df_csv1.count()
+
+
+#count distinct no.of rows
+df_csv1.distinct().count()
+
+
+#explain physical plan and logical plan
+df_csv1.explain()
+
+
+#All table columns Names
+df_csv1.columns
+
+
+
+import functions:
+=================
+from pyspark.sql.functions import *
+
+
+
+select:
+=======
+df_csv1.select(col('population')/2,'total_rooms',col('median_house_value')*10).show(10)
+or
+df_csv1.select([col('population')/2,'total_rooms',col('median_house_value')*10]).show(10)
+
+
+
+Adding new columns:
+===================
+df_csv1.withColumn('new_population',col('population')/2).withColumn('house_value',col('median_house_value')*10).show(10)
+
+
+
+dropping columns:
+=================
+df_csv1.drop('population','median_house_value').show(10)
+
+
+
+Renamed Column Names:
+=====================
+df_csv1.withColumnRenamed('total_bedrooms','bedrooms').withColumnRenamed('total_rooms','rooms').show(10)
+
+
+
+drop null values from dataFrame:
+================================
+# how = any ,it drops any null value in dataframe
+
+df_pipe1 = df_pipe.dropna(how = 'any')
+df_pipe1.count()
+
+
+# how =all,drops only all nulls in single row
+
+df_pipe2 = df_pipe.dropna(how = 'all')
+df_pipe2.count()
+
+
+
+#threshold
+
+df_pipe3 = df_pipe.dropna(how = 'any',thresh= 2)
+df_pipe3.count()
+
+
+#subset - used to delete particular column null values
+
+df_pipe4 = df_pipe.dropna(how = 'any',subset=["UPDATED_DATE"])
+df_pipe4.count()
+
+
+
+# fill null values in dataFrame:
+================================
+df_pipe11 = df_pipe.fillna('missing',['ENAME','JOB']).fillna(1,['MGR','SAL']).fillna('12-08-1995',['HIREDATE','UPDATED_DATE'])
+df_pipe11.show()
+
+
+
+Filter operations:
+==================
+#salary of peeple greter than 1600 -one way
+df_pipe.filter('SAL>1600').show()
+
+
+#salary of peeple greter than 3000 -other way
+df_pipe.filter(col('SAL')>3000).show()
+
+
+#not operator
+
+df_pipe.filter(~(col('SAL')>3000)).show(10)
+
+
+# & operator
+#show empno,ename of people salary less than 1500 and comm should be greater than zero
+
+df_pipe.filter((col('SAL')>1000) & (col('SAL')<2000)).show(10)
+
+
+# | operator
+
+df_pipe.filter((col('SAL')>1000) | (col('SAL')<2000)).show(10)
+
+
+
+Filter operations:
+==================
+
+#salary of peeple greter than 1600 -one way
+
+df_pipe.filter('SAL>1600').show()
+
+
+#salary of peeple greter than 3000 -other way
+
+df_pipe.filter(col('SAL')>3000).show()
+
+
+#not operator
+
+df_pipe.filter(~(col('SAL')>2000)).show(10)
+
+
+# & operator
+#show employee details who's salary less than 3000 and salary should be greater than 2000
+
+df_pipe.filter( (col('SAL')>2000) & (col('SAL')<3000)).show(10)
+
+df_pipe.filter( (col('JOB') == 'CLERK') & (col('SAL')>1000)).show(10)
+
+
+# | operator
+#show employee details who's salary less than 3000 or salary should be greater than 2000
+
+df_pipe.filter( (col('SAL')>2000) | (col('SAL')<3000)).show(10)
+
+
+
+GroupBy operations:
+===================
+#find job role and people count
+df_pipe.groupby('JOB').count().show()
+
+
+#Group by job role and sum of salaries
+df_pipe.groupBy('JOB').sum('SAL').show()
+
+
+#find deptno and people count
+df_pipe.groupBy('DEPTNO').count().show()
+
+
+#find job deptno and sum salary
+df_pipe.groupBy('DEPTNO').sum('SAL').show()
+
+
+
+sort operations:
+================
+# sort salary data in low to high
+df_pipe.sort(df_pipe.SAL.asc()).show(10)
+
+# sort salary data in high to low
+df_pipe.sort(df_pipe.SAL.desc()).show(10)
+
+
+
+OrderBy operations:
+===================
+df_pipe.orderBy(df_pipe.SAL.asc()).show(10)
+
+
+joins:
+======
+
+product = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/product_info_1.csv')
+product.show()
+product.printSchema()
+
+sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sales_data_1.csv')
+sale.show()
+sale.printSchema()
+
+
+inner Join:
+===========
+df_inner = product.join(sale,product.product_id == sale.product_id,'inner')
+
+df_inner.show(truncate = False)
+df_inner.count()
+
+
+left join:
+==========
+df_left = product.join(sale,product.product_id == sale.product_id,'left')
+df_left.show(truncate = False)
+df_left.count()
+
+
+
+right join:
+===========
+df_right = product.join(sale,product.product_id == sale.product_id,'right')
+
+df_right.show(truncate = False)
