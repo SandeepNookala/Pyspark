@@ -1,0 +1,82 @@
+
+Installing Pyspark:
+===================
+!pip install pyspark py4j
+ 
+ 
+
+creating spark Session:
+=======================
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.master('local').appName('usecases').getOrCreate()
+spark
+
+
+
+read csv file data:
+===================
+df_csv = spark.read.format('csv').option('header',True).option('inferSchema',True).load('/content/employee.csv')
+
+df_csv.show(10)
+df_csv.printSchema()
+df_csv.count()
+
+
+
+convert from String (dd-mm-yyyy) date format to spark date format (yyyy-mm-dd):
+===============================================================================
+# date format in Traditional databases is dd-mm-yyyy
+# date format in spark is yyyy-mm-dd
+
+from pyspark.sql.functions import *
+
+df_csv1 = df_csv.withColumn('New_HIREDATE',to_date('HIREDATE','dd-mm-yyyy')).withColumn('New_UPDATED_DATE',to_date('UPDATED_DATE','dd-mm-yyyy')).drop('HIREDATE','UPDATED_DATE')
+
+df_csv1.show()
+df_csv1.printSchema()
+
+
+
+Adding new columns with different values and drop null values:
+==============================================================
+df_csv2 = df_csv1.withColumn('Position',when( col('JOB') == 'CLERK' ,'Level3').when( col('JOB') == 'SALESMAN' ,'Level4')
+.when(col('JOB') == 'MANAGER','Level2').when( col('JOB') == 'PRESIDENT','Level1') ).dropna()
+
+df_csv2.show(10)
+df_csv2.count()
+
+
+Save Dataframe to Hive table:
+=============================
+df_csv2.write.partitionBy('JOB').saveAsTable('Employee1')
+
+
+write spark sql query:
+======================
+spark.sql('select * from Employee1').show()
+
+
+Read Dataframe from Hive table:
+===============================
+df_hive = spark.read.table('Employee1')
+
+df_hive.show()
+
+
+
+Adding current timestamp to dataframe:
+======================================
+df_hive1 = df_hive.withColumn('Date',current_timestamp())
+
+df_hive1.show(truncate = False)
+
+
+
+key = df.withColumn('key',crc32( col('emp_id').cast('string'))
+
+key1 = df.withColumn('key1',md5( col('emp_id).cast('string'))
+
+
+df.withColumn('sha2',sha2( col('empno').cast('string'),512))
+
