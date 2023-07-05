@@ -95,7 +95,7 @@ df_csv1.take(2)
 df_csv1.dtypes
 
 
-# compute summery satistics for dataframe
+# compute summery satistics for dataframe - count,mean,stddev,min,max
 df_csv1.describe().show()
 
 
@@ -156,6 +156,7 @@ df_pipe1 = df_pipe.dropna(how = 'any')
 df_pipe1.count()
 
 
+
 # how =all,drops only all nulls in single row
 
 df_pipe2 = df_pipe.dropna(how = 'all')
@@ -167,6 +168,7 @@ df_pipe2.count()
 
 df_pipe3 = df_pipe.dropna(how = 'any',thresh= 2)
 df_pipe3.count()
+
 
 
 #subset - used to delete particular column null values
@@ -185,33 +187,6 @@ df_pipe11.show()
 
 Filter operations:
 ==================
-#salary of peeple greter than 1600 -one way
-df_pipe.filter('SAL>1600').show()
-
-
-#salary of peeple greter than 3000 -other way
-df_pipe.filter(col('SAL')>3000).show()
-
-
-#not operator
-
-df_pipe.filter(~(col('SAL')>3000)).show(10)
-
-
-# & operator
-#show empno,ename of people salary less than 1500 and comm should be greater than zero
-
-df_pipe.filter((col('SAL')>1000) & (col('SAL')<2000)).show(10)
-
-
-# | operator
-
-df_pipe.filter((col('SAL')>1000) | (col('SAL')<2000)).show(10)
-
-
-
-Filter operations:
-==================
 
 #salary of peeple greter than 1600 -one way
 
@@ -224,7 +199,6 @@ df_pipe.filter(col('SAL')>3000).show()
 
 
 #not operator
-
 df_pipe.filter(~(col('SAL')>2000)).show(10)
 
 
@@ -232,6 +206,10 @@ df_pipe.filter(~(col('SAL')>2000)).show(10)
 #show employee details who's salary less than 3000 and salary should be greater than 2000
 
 df_pipe.filter( (col('SAL')>2000) & (col('SAL')<3000)).show(10)
+
+
+# & operator
+#show clark employee details who's salary greater than 1000
 
 df_pipe.filter( (col('JOB') == 'CLERK') & (col('SAL')>1000)).show(10)
 
@@ -245,7 +223,7 @@ df_pipe.filter( (col('SAL')>2000) | (col('SAL')<3000)).show(10)
 
 GroupBy operations:
 ===================
-#find job role and people count
+#groupby job role and people count
 df_pipe.groupby('JOB').count().show()
 
 
@@ -253,11 +231,11 @@ df_pipe.groupby('JOB').count().show()
 df_pipe.groupBy('JOB').sum('SAL').show()
 
 
-#find deptno and people count
+#groupby deptno and people count
 df_pipe.groupBy('DEPTNO').count().show()
 
 
-#find job deptno and sum salary
+#groupby deptno and sum salary
 df_pipe.groupBy('DEPTNO').sum('SAL').show()
 
 
@@ -276,6 +254,8 @@ OrderBy operations:
 ===================
 df_pipe.orderBy(df_pipe.SAL.asc()).show(10)
 
+df.orderBy(df.SAL.asc()).show()
+
 
 
 joins:
@@ -288,6 +268,7 @@ product.printSchema()
 sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sales_data_1.csv')
 sale.show()
 sale.printSchema()
+
 
 
 inner Join:
@@ -333,3 +314,4 @@ Read Dataframe from Hive table:
 ps = spark.read.table('products_Sales')
 
 ps.show()
+

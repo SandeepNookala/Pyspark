@@ -3,7 +3,7 @@ Installing Pyspark:
 ===================
 !pip install pyspark py4j
  
- 
+
 
 creating spark Session:
 =======================
@@ -11,6 +11,10 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.master('local').appName('usecases').getOrCreate()
 spark
+
+Import all Functions:
+=====================
+from pyspark.sql.functions import *
 
 
 
@@ -24,42 +28,53 @@ df_csv.count()
 
 
 
+Concatinating two columns:
+==========================
+df_concat = df_csv.withColumn('Name_Sal',concat('ENAME','SAL'))
+df_concat.show(10)
+
+
+Change data type of column:
+===========================
+df_cha = df_csv.withColumn('Emp',col('EMPNO').cast('string')).withColumn('sala',col('SAL').cast('string'))
+df_cha.printSchema()
+
+
+
 convert from String (dd-mm-yyyy) date format to spark date format (yyyy-mm-dd):
 ===============================================================================
 # date format in Traditional databases is dd-mm-yyyy
 # date format in spark is yyyy-mm-dd
 
-from pyspark.sql.functions import *
+df_csv = df_csv.withColumn('New_HIREDATE',to_date('HIREDATE','dd-mm-yyyy')).withColumn('New_UPDATED_DATE',to_date('UPDATED_DATE','dd-mm-yyyy')).drop('HIREDATE','UPDATED_DATE')
 
-df_csv1 = df_csv.withColumn('New_HIREDATE',to_date('HIREDATE','dd-mm-yyyy')).withColumn('New_UPDATED_DATE',to_date('UPDATED_DATE','dd-mm-yyyy')).drop('HIREDATE','UPDATED_DATE')
-
-df_csv1.show()
-df_csv1.printSchema()
+df_csv.show(10)
+df_csv.printSchema()
 
 
 
 Adding new columns with different values and drop null values:
 ==============================================================
-df_csv2 = df_csv1.withColumn('Position',when( col('JOB') == 'CLERK' ,'Level3').when( col('JOB') == 'SALESMAN' ,'Level4')
+df_csv = df_csv.withColumn('Position',when( col('JOB') == 'CLERK' ,'Level3').when( col('JOB') == 'SALESMAN' ,'Level4')
 .when(col('JOB') == 'MANAGER','Level2').when( col('JOB') == 'PRESIDENT','Level1') ).dropna()
 
-df_csv2.show(10)
-df_csv2.count()
+df_csv.show(10)
+df_csv.count()
 
 
 Save Dataframe to Hive table:
 =============================
-df_csv2.write.partitionBy('JOB').saveAsTable('Employee1')
+df_csv.write.partitionBy('JOB').saveAsTable('New_Employee')
 
 
 write spark sql query:
 ======================
-spark.sql('select * from Employee1').show()
+spark.sql('select * from New_Employee').show()
 
 
 Read Dataframe from Hive table:
 ===============================
-df_hive = spark.read.table('Employee1')
+df_hive = spark.read.table('New_Employee')
 
 df_hive.show()
 
@@ -73,10 +88,206 @@ df_hive1.show(truncate = False)
 
 
 
-key = df.withColumn('key',crc32( col('emp_id').cast('string'))
+Creating Data Frame from mysql table:
+=====================================
+df_mysql = spark.read.format('jdbc').option('url','jdbc:mysql://localhost:3306').option('driver','com.mysql.jdbc.Driver').
+option('user','root').option('password','sandeep').option('query','select * from sandeep.emp_table').load()
 
-key1 = df.withColumn('key1',md5( col('emp_id).cast('string'))
+
+fill missing data in textFile and convert into Dataframe:
+=========================================================
+df_txt = spark.read.format('csv').option('header',True).option('sep',' ').load('/content/fill missing.txt').fillna('no data')
+
+df_txt.show(10)
 
 
-df.withColumn('sha2',sha2( col('empno').cast('string'),512))
 
+Functions in pyspark:
+=====================
+from pyspark.sql.functions import *
+
+spark.sql('show functions')
+
+
+
+Creating DataFrame from Json file:
+==================================
+df_json = spark.read.format('json').load('/content/emp.json')
+df_json.show()
+df_json.printSchema()
+df_json.count()
+
+
+
+Creating DataFrame from multiLine Json file:
+============================================
+#if json file has  more no.of lines (nested data) .then we should use multiLine in options
+
+df_mul_json = spark.read.format('json').option('multiline',True).option('inferSchema',True).option('nullValue','null').load('/content/nested_json.json')
+df_mul_json.show(truncate = False)
+df_mul_json.printSchema()
+df_mul_json.count()
+
+
+Explode json Columns:
+=====================
+
+df_explode = df_mul_json.withColumn('batters_exp',explode('batters.batter'))\
+.withColumn('batter_id', col('batters_exp.id')).withColumn('better_type',col('batters_exp.type')).drop('batters','batters_exp')
+
+df_explode.show()
+
+df_mul_final = df_explode.withColumn('topping_exp',explode('topping')).withColumn('topping_id',col('topping_exp.id'))\
+.withColumn('topping_type',col('topping_exp.type')).drop('topping','topping_exp')
+
+df_mul_final.show()
+
+
+
+how to handle multi delimiter files:
+====================================
+mu_df = spark.read.format('csv').option('sep','||').option('header',True).load('/content/emp_multiple_delimeter.txt')
+mu_df.show()
+
+
+mu_df = mu_df.withColumn('Split',split('SAL',','))
+mu_df.show()
+
+
+mu_df = mu_df.withColumn('SAL',col('Split')[0]) \
+             .withColumn('COMM',col('Split')[1]) \
+             .withColumn('DEPTNO',col('Split')[2]) \
+             .withColumn('UPDATED_DATE',col('Split')[3]) \
+             .drop('Split')
+mu_df.show()
+
+
+individual Columns null values:
+===============================
+df_csv.filter('UPDATED_DATE is Null').show()
+df_csv.filter('SAL is null').show()
+
+
+
+how to get no.of rows in each partition:
+========================================
+df_csv.select(spark_partition_id().alias('id')).groupBy('id').count().show()
+
+
+# By Using Repartition
+
+df_csv.repartition(4).select(spark_partition_id().alias('id')).groupBy('id').count().show()
+
+
+
+print file name with location:
+=============================
+
+file_name = df_csv.withColumn('file_Location',input_file_name())
+
+file_name.show(truncate = False)
+
+
+
+how to read all files from a single directory:
+==============================================
+
+df_dic = spark.read.format('csv').option('header',True).option('nullValue','null').option('inferSchema',True).load('/content/sample_data/data')
+df_dic.show()
+df_dic.count()
+
+
+
+how to read all files from a directory inside another directory (nested/sub directory):
+=========================================================================================
+df_all = spark.read.format('parquet').option('recursiveFileLookup',True).option('header',True).option('nullValue','null').option('inferSchema',True).load('/content/spark-warehouse')
+
+
+df_all.show()
+df_all.count()
+
+
+create year,month,day columns from Date Column:
+=================================================
+df_csv = df_csv.withColumn('year',date_format('New_HIREDATE','yyyy'))\
+.withColumn('month',date_format('New_HIREDATE','MM'))\
+.withColumn('day',date_format('New_HIREDATE','dd'))
+
+df_csv.show()
+
+
+
+Create A partitioned dataframe by year,month,day save it to Employee Hire table:
+================================================================================
+
+df_csv.write.partitionBy('year','month','Day').saveAsTable('employee_hire')
+spark.sql('select * from employee_hire').show()
+
+
+Dataframe Write Modes:
+======================
+overwrite – mode is used to overwrite the existing file.
+
+append – To add the data to the existing file.
+
+ignore – Ignores write operation when the file already exists.
+
+error – This is a default option when the file already exists, it returns an error.
+
+
+#overwrite – mode is used to overwrite the existing file.
+df_csv.write.partitionBy('year','month','day').mode('overwrite').saveAsTable('employee_hire')
+df_csv.count()
+
+
+# append – To add the data to the existing file.
+df_csv.write.partitionBy('year','month','day').mode('append').saveAsTable('employee_hire')
+df_csv.count()
+
+
+#ignore – Ignores write operation when the file already exists.
+df_csv.write.partitionBy('year','month','day').mode('ignore').saveAsTable('employee_hire')
+
+
+
+how to add/generate sequence id /surrogate key as a column:
+===========================================================
+#monotonically_increasing_id
+df_mono = df_csv.withColumn('mono_key',monotonically_increasing_id())
+df_mono.show()
+
+# from custom id
+df_mono1 = df_csv.withColumn('mono_id',monotonically_increasing_id()+1)
+df_mono1.show()
+
+
+
+
+# crc32 hash key
+#1.generate random numbers - it is works only on string data type
+#2.We should not use crc32 surrogate key generation on larger table because it can generate duplicate sequence if more than 100k/1M records
+df_crc = df_csv.withColumn('crc_key',crc32( col('EMPNO').cast('string')))
+df_crc.show(10,truncate = False)
+
+
+
+
+# md5 - 32 bit hash key
+# not suggeted for if records more than 1 Million it can generate duplicates
+df_md = df_csv.withColumn('md_key', md5( col('EMPNO').cast('string') ))
+df_md.show(10,truncate = False)
+
+
+#sha2 - hash key value
+#suggeted for huge data 256 0r 512 bits
+df_sha_256 = df_csv.withColumn('sha_key',sha2( col('EMPNO').cast('string'),256))
+df_sha_256.show(10,truncate = False)
+df_sha_512 = df_csv.withColumn('sha_key',sha2( col('EMPNO').cast('string'),512 ))
+df_sha_512.show(10,truncate = False)
+
+
+
+#row_number
+from pyspark.sql.window import *
+df_row = df_csv.withColumn('row_number',row_number().over(Window.partitionBy(lit('')).orderBy(lit(''))))
+df_row.show()
