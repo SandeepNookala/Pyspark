@@ -239,36 +239,75 @@ df_pipe.groupBy('DEPTNO').count().show()
 df_pipe.groupBy('DEPTNO').sum('SAL').show()
 
 
+Difference Between sort and order by:
+=====================================
+Spark_sql : orderBy will do sorting an entire data ,sortby will do Partition wise sorting in sparksql .
+
+pyspark : orderBy and sort are same pyspark.sortwithinpartitions same as sortby ( it will do Partition wise sorting)
+
+
 
 sort operations:
 ================
-# sort salary data in low to high
-df_pipe.sort(df_pipe.SAL.asc()).show(10)
-
-# sort salary data in high to low
-df_pipe.sort(df_pipe.SAL.desc()).show(10)
+# sort salary data in  high to low
+df_pipe.sort( col('SAL').desc()).show(10)
 
 
 
 OrderBy operations:
 ===================
-df_pipe.orderBy(df_pipe.SAL.asc()).show(10)
+#In Pyspark - orderBy and sort are same pyspark
+# order salary data in high to low
+df_pipe.orderBy( col('SAL').desc()).show(10)
 
-df.orderBy(df.SAL.asc()).show()
+
+
+SortWithinpartition:
+====================
+#sortWithinPartitions -sortwithinpartitions same as sortby ( it will do Partition wise sorting)
+df_pipe.sortWithinPartitions('SAL').show(10)
+
+coalesce:
+=========
+coalesce : is a Narrow transformation : adjust data in existing partition,No shuffling ,
+By defult it will used for decrease the partitions.
+
+df_pipe.rdd.getNumPartitions()
+df_pipe.coalesce(3).withColumn('partition_id',spark_partition_id()).show()
+
+
+repartition:
+============
+repartition : is a wide transformation : create new partitions,Data shuffle will happen,
+used for increase/decrease the partitions, we can repartition based on column specific to increse the performence
+
+df_pipe.rdd.getNumPartitions()
+df_pipe.repartition(3).withColumn('partition',spark_partition_id()).show()
 
 
 
-joins:
-======
+joining two dataframes:
+=======================
 
-product = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/product_info_1.csv')
-product.show()
-product.printSchema()
+product = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/product_info_2.csv')
+product.show(10)
 
-sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sales_data_1.csv')
-sale.show()
-sale.printSchema()
+sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sales_data_2.csv')
+sale.show(10)
 
+#Joining Two Data frames
+# BY using drop function avoid duplicate columns after join
+product_sale = sale.join(product, product.product_id == sale.product_id,'inner').drop(product.product_id,product.sl_no)
+product_sale.show()
+
+#new Revenue Column 
+product_sale = product_sale.withColumn('Revenue',col('qty') * col('unit_price'))
+product_sale.show()
+
+
+Pivot Table:
+============
+product_sale.groupBy('year').pivot('product_name').sum('Revenue').show()
 
 
 inner Join:
@@ -305,13 +344,12 @@ df_join.show()
 
 Save Dataframe into hive table:
 ===============================
-df_join.write.partitionBy('product_name').saveAsTable('products_Sales')
+product_sale.write.partitionBy('product_name').saveAsTable('product_Sale')
 
 
 
 Read Dataframe from Hive table:
 ===============================
-ps = spark.read.table('products_Sales')
+ps = spark.read.table('product_Sale')
 
 ps.show()
-
