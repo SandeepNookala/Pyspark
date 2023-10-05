@@ -27,9 +27,13 @@ df_csv.show(10)
 
 
 Reading csv data into dataframe with Header and schema ?
-print dataframe type ,show dataframe,count rows and printSchema?
-================================================================
+========================================================
 df_csv1 = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sample_data/california_housing_test.csv')
+
+
+
+print dataframe type ,show dataframe,count rows and printSchema?
+================================================================ 
 type(df_csv1)
 df_csv1.show(10)
 df_csv1.count()
@@ -98,7 +102,7 @@ df_csv1.dtypes
 # compute summery satistics for dataframe - count,mean,stddev,min,max
 df_csv1.describe().show()
 
-
+df.describe().show()
 #count no.of rows
 df_csv1.count()
 
@@ -267,6 +271,8 @@ SortWithinpartition:
 #sortWithinPartitions -sortwithinpartitions same as sortby ( it will do Partition wise sorting)
 df_pipe.sortWithinPartitions('SAL').show(10)
 
+
+
 coalesce:
 =========
 coalesce : is a Narrow transformation : adjust data in existing partition,No shuffling ,
@@ -274,6 +280,7 @@ By defult it will used for decrease the partitions.
 
 df_pipe.rdd.getNumPartitions()
 df_pipe.coalesce(3).withColumn('partition_id',spark_partition_id()).show()
+
 
 
 repartition:

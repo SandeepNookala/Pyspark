@@ -28,10 +28,23 @@ df_csv.count()
 
 
 
+New column with Defult values:
+==============================
+df_csv.withColumn('Type',lit('Employee')).show()
+
+
+
 Concatinating two columns:
 ==========================
 df_concat = df_csv.withColumn('Name_Sal',concat('ENAME','SAL'))
 df_concat.show(10)
+
+
+
+Concatinating two columns with seprator:
+========================================
+df_concat_ws = df_csv.withColumn('EMP_Name_Sal',concat_ws('_',col('EMPNO'),col('ENAME'),col('SAL')))
+df_concat_ws.show(10)
 
 
 Change data type of column:
