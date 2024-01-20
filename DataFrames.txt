@@ -25,9 +25,14 @@ df_csv = spark.read.format('csv').load('/content/sample_data/california_housing_
 df_csv.show(10)
 
 
+read csv file with 10 partitions:
+=================================
 
-Reading csv data into dataframe with Header and schema ?
-========================================================
+df_part = spark.read.format('csv').option('header',True).load('file path',10)
+
+
+Reading csv data into dataframe with Header and inferSchema,nulls ?
+===================================================================
 df_csv1 = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/content/sample_data/california_housing_test.csv')
 
 
@@ -79,6 +84,13 @@ df_csv1.show(10)
 df_csv1.printSchema()
 
 
+#count no.of rows
+df_csv1.count()
+
+#count distinct no.of rows
+df_csv1.distinct().count()
+
+
 #first row
 df_csv1.first()
 
@@ -95,20 +107,8 @@ df_csv1.tail(1)
 df_csv1.take(2)
 
 
-# return column names and data types
-df_csv1.dtypes
-
-
 # compute summery satistics for dataframe - count,mean,stddev,min,max
-df_csv1.describe().show()
-
 df.describe().show()
-#count no.of rows
-df_csv1.count()
-
-
-#count distinct no.of rows
-df_csv1.distinct().count()
 
 
 #explain physical plan and logical plan
@@ -117,6 +117,10 @@ df_csv1.explain()
 
 #All table columns Names
 df_csv1.columns
+
+
+# return column names and data types
+df_csv1.dtypes
 
 
 
@@ -154,29 +158,26 @@ df_csv1.withColumnRenamed('total_bedrooms','bedrooms').withColumnRenamed('total_
 
 drop null values from dataFrame:
 ================================
-# how = any ,it drops any null value in dataframe
 
+# how = any ,it drops any null value in dataframe
 df_pipe1 = df_pipe.dropna(how = 'any')
 df_pipe1.count()
 
 
 
-# how =all,drops only all nulls in single row
-
+# how =all,drop rows which had  all null values in it
 df_pipe2 = df_pipe.dropna(how = 'all')
 df_pipe2.count()
 
 
 
 #threshold
-
 df_pipe3 = df_pipe.dropna(how = 'any',thresh= 2)
 df_pipe3.count()
 
 
 
 #subset - used to delete particular column null values
-
 df_pipe4 = df_pipe.dropna(how = 'any',subset=["UPDATED_DATE"])
 df_pipe4.count()
 
@@ -231,7 +232,7 @@ GroupBy operations:
 df_pipe.groupby('JOB').count().show()
 
 
-#Group by job role and sum of salaries
+#group by job role and sum of salaries
 df_pipe.groupBy('JOB').sum('SAL').show()
 
 
@@ -245,10 +246,10 @@ df_pipe.groupBy('DEPTNO').sum('SAL').show()
 
 Difference Between sort and order by:
 =====================================
-Spark_sql : orderBy will do sorting an entire data ,sortby will do Partition wise sorting in sparksql .
 
-pyspark : orderBy and sort are same pyspark.sortwithinpartitions same as sortby ( it will do Partition wise sorting)
+orderby/sort -- sorting on entire data
 
+sortby/sortwithinpartitions -- partition wise sorting
 
 
 sort operations:
