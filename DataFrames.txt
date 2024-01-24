@@ -107,6 +107,11 @@ df_double.explain()
 from pyspark.sql.functions import *
 
 
+fun = spark.sql('show functions')
+print(fun.count())
+print(fun.show())
+
+
 
 9.select operations:
 ====================
@@ -197,6 +202,11 @@ df_pipe.filter((col('SAL')>2000) | (col('SAL')<1000)).show()
 
 #not operator
 df_pipe.filter( ~ (col('JOB') == 'MANAGER')).show()
+
+
+# filter individual Columns null values
+df_pipe.filter('HIREDATE is null').show()
+df_pipe.filter('MGR is null').show()
 
 
 
