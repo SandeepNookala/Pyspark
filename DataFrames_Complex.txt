@@ -1,0 +1,191 @@
+
+1.handle yy date format in pyspark for before 2000 data:
+========================================================
+yy_df = spark.read.format('csv').option('header',True).option('sep','|').option('inferSchema',True).option('nullValue','null')\ .load('/content/emp_pipe_yy.txt')
+
+yy_df.show()
+yy_df.printSchema()
+
+
+#Spark defaulty chooses year after 2000
+# we need to set spark sql legcy timeparserpolicy to legacy -- Useful for less columns data only ,if more data means need ask source system set proper date format
+
+
+spark.conf.set('spark.sql.legacy.timeParserPolicy','LEGACY')
+yy_df.withColumn('DATE',to_date('UPDATED_DATE','dd-mm-yy')).show()
+
+
+
+2.get number of null in all columns:
+====================================
+df_csv.select([count(when(col(i).isNull(),i)).alias(i) for i in df_csv.columns]).show()
+
+
+
+3.word count in single line - Find No.of Occurences of single word:
+===================================================================
+RDD = spark.sparkContext.textFile('/content/word.txt').flatMap(lambda x : x.split(' ')) \
+                                                      .map(lambda x:(x,1)).reduceByKey(lambda x,y : x+y)
+
+RDD.collect()
+
+
+
+4.Skip rows in given file:
+==========================
+r1 = spark.sparkContext.textFile('/content/emp_pipe_skip.txt').zipWithIndex() \
+                       .filter(lambda a : a[1]>2).map(lambda a : a[0].split('|'))
+
+r1.collect()
+
+columns = r1.collect()[0]
+skipline = r1.collect()[0]
+print(columns)
+print(skipline)
+
+
+sk_df = r1.filter(lambda a : a!= skipline).toDF(columns)
+
+sk_df.show(10)
+print(sk_df.count())
+sk_df.printSchema()
+print(type(sk_df))
+
+
+
+5.get 53 th weak years from last 50 years:
+==========================================
+we_df = spark.createDataFrame([(i,"01/01/"+str(i)+"")for i in range(1990,2050)],['id','year'])
+we_df = we_df.withColumn('date',to_date('year','dd/mm/yyyy')).withColumn('week',weekofyear('date')).filter('week= 53')
+we_df.show()
+
+
+
+6.Creating a dataframe:
+=======================
+cr_df = spark.createDataFrame([(i,"02/01/"+str(i)+"") for i in range (1999,2050)],['id','year'])
+
+cr_df.show()
+
+
+
+7.handle or how to read variable/dynamic no.of columns data file ( with Out Header File):
+=========================================================================================
+df = spark.read.format('text').load('/content/emp_without_header.txt').withColumn('New',split('value',','))
+
+# To find max No.of coulumns in a table
+col_size = df.select(max(size(col('New'))))
+
+df.show(5,truncate=True)
+col_size.show()
+print(type(df))
+df.printSchema()
+
+for i in range(col_size.collect()[0][0]):
+  df = df.withColumn('col'+str(i),df['New'][i])
+df.show(truncate = False)
+
+df1 = df.drop('value').drop('New')
+df1.show(truncate = False)
+df1.printSchema()
+print(type(df1))
+
+
+
+8.udf register:
+===============
+from pyspark.sql.types import *
+
+# UDF
+
+def f1(x):
+  return ((x*x)-x)
+
+spark.udf.register('fun',f1,IntegerType())
+fun = udf(f1,IntegerType())
+
+print(f1(5))
+
+df5.select('ENAME',sqrt('SAL'),fun('SAL')).show()
+
+
+
+9.how to handle bad data:
+==========================
+Spark read Mode: 1.PERMISSIVE - allows bad data - it's spark default mode
+2.FAILFAST - won't allows bad data -it raise expection - it won't process further
+3.DROPMALFORMED - drops bad records based on schema -it won't save bad records
+4.badrecordsPath - save good data in table and saves bad it another path
+
+bad = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null')\
+                                                    .load('/content/channels.csv')
+
+bad.show()
+bad.schema
+
+
+from pyspark.sql.types import *
+
+# need to add _corrupt_record column string type in custom made schema
+schema  = StructType([StructField('CHANNEL_ID', IntegerType(), True),
+                      StructField('CHANNEL_DESC', StringType(), True),
+                      StructField('CHANNEL_CLASS', StringType(), True),
+                      StructField('CHANNEL_CLASS_ID', IntegerType(), True),
+                      StructField('CHANNEL_TOTAL', StringType(), True),
+                      StructField('CHANNEL_TOTAL_ID', IntegerType(), True),
+                      StructField("BadData", StringType(), True)])
+					  
+#save bad Records Using mode - PERMISSIVE and _corrupt_record ,columnNameofCorrputRecord
+
+bad1 = spark.read.format('csv').schema(schema).option('Mode','PERMISSIVE').option('ColumnNameOfCorruptRecord','BadData')\
+                                              .option('header',True).option('nullValue','null').load('/content/channels.csv')
+bad1.show()
+
+# filter good records
+goodData = bad1.filter('BadData is Null').drop('BAdData')
+goodData.show()
+
+# filter corrupt records
+bad3 = bad1.filter('BadData is Not Null')
+bad3.show()
+
+
+#mode - FAILFAST
+
+bad = spark.read.format('csv').schema(schema).option('mode','FAILFAST').option('header',True).option('nullValue','null')\
+                                             .load('/content/channels.csv')
+bad.show()
+
+
+#DROPMALFORMED
+
+bad = spark.read.format('csv').schema(schema).option('mode','DROPMALFORMED').option('header',True)\
+                                             .option('nullValue','null').load('/content/channels.csv')
+bad.show()
+
+
+
+10.Creating Data Frame from REST API:
+=====================================
+#REST API -Accessing the data over internet through Urls
+
+import requests
+import json
+
+api = requests.request('GET','https://api.github.com/users/hadley/orgs')
+
+data = api.json()
+
+file = open('/content/sample_data/apidata.json','a')
+
+for record in data:
+  file.write("%s\n" %record)
+
+api_df = spark.read.format('json').load('/content/sample_data/apidata.json')
+
+print(type(api.json()))
+print(len(api.json()))
+
+api_df.show(10)
+api_df.printSchema()
+api_df.count()
