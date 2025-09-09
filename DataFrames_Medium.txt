@@ -1,47 +1,69 @@
 1.read csv file data:
 =====================
-df = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('dbfs:/FileStore/
-shared_uploads/nookala382@gmail.com/employee.csv')
-df.show(10)
+df_emp = spark.read.format('csv').option('header',True).option('sep','||').option('nullValue','null').option('inferSchema',True).load('/Volumes/workspace/sandeep/input/emp_double_pipe.txt')
+
+df_emp.printSchema()
+
+df_emp.show(5)
+
+df_emp.count()
 
 
 
 2.New column with Defult values:
 ================================
 from pyspark.sql.functions import *
-df1 = df.withColumn('Source',lit('Test'))
-df1.show(10)
+df_emp_new = df_emp.withColumn('Country_code',lit('IND'))
+df_emp_new.show()
 
 
 
 3.Concatinating two columns:
-===========================
-df1.withColumn('SOUR_ENAME',concat('Source','ENAME')).show(10)
-
-
-
-3.Concatinating two columns with separator:
 ===========================================
-df2 = df1.withColumn('SOUR_ENAME',concat_ws('_','Source','ENAME','SAL'))
-df2.show(10)
+df_emp_conc =df_emp_new.withColumn('name_country',concat('EName','Country_Code') )
+df_emp_conc2 =df_emp_new.withColumn('name_country',concat('EName',lit('-'),'Country_Code') )
+df_emp_conc.show(5)
+df_emp_conc2.show(5)
 
 
 
-4.Change data type of column:
+4.Concatinating two columns with separator:
+===========================================
+df_emp_conc2=df_emp_new.withColumn('name_country',concat_ws('-','ENAME','country_code','JOB'))
+df_emp_conc2.show()
+
+
+
+5.Change data type of column:
 =============================
-df_cast = df2.withColumn('NEW_SAL',col('SAL').cast('string')).withColumn('NEW_EMPNO',col('EMPNO').cast('string'))
-df_cast.printSchema()
+df_emp_type = df_emp_conc.withColumn('EMPNO', col('EMPNO').cast('string'))
+df_emp_type.printSchema()
 
 
 
-5.convert from String (dd-mm-yyyy) date format to spark date format (yyyy-mm-dd):
+6.convert from String (dd-mm-yyyy) date format to spark date format (yyyy-mm-dd):
 =================================================================================
-df3 = df2.withColumn('UPDATED_DATE',to_date('UPDATED_DATE','dd-MM-yyyy'))
-df3.show(5)
+df_emp_date = df_emp_type.withColumn('UPDATED_DATE', to_date('UPDATED_DATE','dd-mm-yyyy'))
+df_emp_date.printSchema()
+df_emp_date.show()
 
 
 
-6.Adding new columns with different values:
+7.Adding current timestamp to dataframe:
+========================================
+df_emp_curr = df_emp_date.withColumn("current_timestamp",current_timestamp())
+df_emp_curr.show()
+
+
+
+8.create year,month,day columns from Date Column:
+=================================================
+df_emp_parti = df_emp_curr.withColumn('day',date_format('UPDATED_DATE','dd')).withColumn('month',date_format('updated_date','MM')).withColumn('year',date_format('updated_date','yyyy'))
+df_emp_parti.show()
+
+
+
+9.Adding new columns with different values:
 ===========================================
 df4 = df3.withColumn('Positions',when( col('JOB') == 'SALESMAN', 'Level4')
                .when( col('JOB') == 'CLERK' ,'Level3')
@@ -54,75 +76,40 @@ df4.show(10)
 
 
 
-7.Adding current timestamp to dataframe:
-========================================
-df5 =df4.withColumn('MODIFIED_DATE',current_date())
-df5.show(10)
-
-
-
-8.create year,month,day columns from Date Column:
-=================================================
-df6 = df5.withColumn('day',date_format('HIREDATE','dd')) \
-                          .withColumn('Month',date_format('HIREDATE','MM')) \
-                          .withColumn('year',date_format('HIREDATE','yyyy'))
-df6.show(10)
-
-
-
-9.Create A partitioned dataframe by year,month,day and save as a parquet file:
+10.Create A partitioned dataframe by year,month,day and save as a parquet file:
 =============================================================================
-df6.write.partitionBy('year','month','day').mode('overwrite') \
-                                           .parquet('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_HIREDATE')
+df_emp_new_col.write.partitionBy('year','month','day').mode('overwrite').format('parquet').save('/Volumes/workspace/sandeep/output/date')
 
 
 
-10.Create A partitioned dataframe on deptno and save as a parquet file:
-=======================================================================
-df6.write.partitionBy('DEPTNO').mode('overwrite') \
-                               .parquet('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_DEPTNO')
+11.Create A partitioned dataframe on JOB and save as a parquet file:
+====================================================================
+df_emp_new_col.write.partitionBy('JOB').format('parquet').mode('overwrite').save('/Volumes/workspace/sandeep/output/JOB/')
 
 
 
-11.print all parquet file names in folder:
-==========================================
-file_name = spark.read.format('parquet').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_DEPTNO') \
-                                        .withColumn('file_name',input_file_name())
-file_name.select('file_name').show(truncate = False)
-
-
-
-12.Ftech all parquet file row count in folder:
-==============================================
-file_count = spark.read.format('parquet').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_DEPTNO') \
-                                         .withColumn('file_name',input_file_name())
-file_count.groupBy('file_name').count().show()
-
-
-
-13.read all files from a single directory:
-=========================================
-df_directory = spark.read.format('parquet').option('recursiveFileLookp',True).option('header',True).option('inferSchema',True)\
-                        .option('nullValue','null').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_DEPTNO')
- 
-df_directory.show(10)
-
-
-
-14.read all parequet files from a directory inside another directory (nested/sub directory):
-============================================================================================
-df_sub_directory = spark.read.format('parquet').option('recursiveFileLookp',True).option('header',True).option('inferSchema',True) \             
-                       .option('nullValue','null').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/output/EMP_DEPTNO')
-
-df_sub_directory.show(10)
-
-df6.withColumn('partition_id',spark_partition_id()).groupBy('partition_id').count().show()
-
-
-
-15.Create A partitioned dataframe by year,month,day save it to Employee Hire table:
+12.Create A partitioned dataframe by year,month,day save it to Employee Hire table:
 ===================================================================================
-df6.write.partitionBy('year','month','day').saveAsTable('Employee_Hire')
+df_emp_new_col.write.partitionBy('year','month','day').saveAsTable('Employee_Hire_table')
+
+
+
+13.Read parquet files with names from folder:
+=============================================
+read_file_name = spark.read.format('parquet').load('/Volumes/workspace/sandeep/output/JOB').withColumn('filename',col('_metadata.file_path'))
+read_file_name.select('filename').show(truncate= False)
+
+
+
+14.parquet files count:
+=======================
+read_file_name.groupBy('filename').count().show(truncate = False)
+
+
+
+#15.read all parquet files from a directory inside another directory (nested/sub directory)
+============================================================================================
+spark.read.format('parquet').option('recursiveFilrLookup',True).load('/Volumes/workspace/sandeep/output/JOB/').show(5)
 
 
 
@@ -134,49 +121,33 @@ df6.write.partitionBy('year','month','day').saveAsTable('Employee_Hire')
 4.error – This is a default option when the file already exists, it returns an error.
 
 
-#overwrite – mode is used to overwrite the existing file.
-df6.write.mode('overwrite').saveAsTable('Employee_Hire')
-df6.count()
-
-
-# append – To add the data to the existing file.
-df6.write.mode('append').saveAsTable('Employee_Hire')
-df6.count()
-
-#ignore – Ignores write operation when the file already exists.
-df6.write.mode('ignore').saveAsTable('Employee_Hire')
-df6.count()
+df_emp_new_col.write.mode('overwrite').saveAsTable('Employee_Hire_table')
+df_emp_new_col.write.mode('append').saveAsTable('Employee_Hire_table')
+df_emp_new_col.write.mode('ignore').saveAsTable('Employee_Hire_table')
 
 
 
 17.Repartition:
 ===============
-df7 = df6.repartition(4).withColumn('partition_id',spark_partition_id())
-df7.rdd.getNumPartitions
+df_emp_part = df_emp_new_col.repartition(3).withColumn('partition_id',spark_partition_id())
 
 
 
 18.how to get no.of rows in each partition:
 ===========================================
-df7.groupBy('partition_id').count().show()
-
+df_emp_part.select('partition_id').groupBy('partition_id').count().show()
 
 
 19.how to handle multi delimiter files:
 =======================================
-df_multi_deli = spark.read.format('csv').option('header',True).option('sep','||').option('inferSchema',True).option('nullValue','null')\
-                        .load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/input/emp_multiple_delimeter.txt')
+df_multi = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').option('sep','||').load('/Volumes/workspace/sandeep/input/emp_multiple_delimeter.txt')
+df_multi.show()
 
-df_multi_deli.show(truncate = False)
+df_multi_2= df_multi.withColumn('Split',split('SAL',','))
+df_multi_2.show()
 
-
-df_multi_deli.withColumn('Split',split('SAL',','))\
-    .withColumn('SAL', col('Split')[0])\
-    .withColumn('COMM',col('split')[1])\
-    .withColumn('DEPTNO',col('split')[2])\
-    .withColumn('UPDATED_DATE',col('split')[3])\
-    .drop('Split') \
-    .show(10)
+df_multi_final = df_multi_2.withColumn('SAL', col('Split')[0]).withColumn('CoMM',col('split')[1]).withColumn('DEPT_NO',col('split')[2]).withColumn('UPDATED_DATE',col('split')[3]).drop(col("Split"))
+df_multi_final.show()
 	
 	
 	
@@ -187,27 +158,35 @@ df_multi_deli.withColumn('Split',split('SAL',','))\
 3.Remove duplicates using row_number()
 
 
+df_dup = spark.read.format('csv').option('header',True).option('nullValue','null').option('inferSchema',True).load('/Volumes/workspace/sandeep/input/employee_dup.csv')
+
+
+
 #distinct
 
-df = df.dropna()
-df.distinct().count()
+df_dup.distinct().count()
 
 
 #dropduplicates - it will keep only first record ,we will not get latest date data
 #so we need to use order by function and desc to drop duplicates
 
-df.orderBy(col('EMPNO').desc()).dropDuplicates(['EMPNO']).count()
+df_unique = df_dup.orderBy( col('EMPNO').desc() ).dropDuplicates(['EMPNO'])
+df_unique.show()
 
 
 # window Function with row number
 
 from pyspark.sql.functions import *
 from pyspark.sql.window import *
-win = Window.partitionBy('ENAME').orderBy(col('EMPNO'))
-df_row_number = df.withColumn("row_number", row_number().over(win)) 
 
-df_row_number.show(10)
-df_row_number.count()
+win = Window.partitionBy('EMPNO').orderBy('EMPNO')
+
+df_win = df_dup.withColumn('row_number',row_number().over(win))
+good_data = df_win.filter( col('row_number') == 1)
+good_data.show()
+
+bad_data = df_win.filter( col('row_number') != 1)
+bad_data.show()
 
 
 #good data
@@ -237,38 +216,37 @@ duplicate_data.count()
 5.row_number() - window function
 
 
-#monotonically_increasing_id
-
+#1.monotonically_increasing_id()
 df.withColumn('id',monotonically_increasing_id()).show(5,truncate = False)
-
-# from custom id
-df.withColumn('mono_id',monotonically_increasing_id()+1).show(5,truncate = False)
+df_emp.withColumn('mono_id',monotonically_increasing_id()+1).show(truncate=False)
 
 
-# crc32 hash key
+#2.crc32 hash key
 #1.generate random numbers - it is works only on string data type
-#2.We should not use crc32 surrogate key generation on larger table because it can generate duplicate sequence if more than 100k/1M records
+#2.We should not use crc32 surrogate key generation on larger table because it can generate duplicate sequence if more than 100k/1M records 
 
-df.withColumn('crc32',crc32('ENAME')).show(5)
-df.withColumn('crc32',crc32( col('EMPNO').cast('string'))).show(5,truncate = False)
-
-
-# md5 - 32 bit hash key
-# not suggeted for if records more than 1 Million it can generate duplicates
-
-df.withColumn('md5',md5( col('EMPNO').cast('string'))).show(5,truncate = False)
+df_emp.withColumn('crc32',crc32( col('EMPNO').cast('string'))).show(truncate=False)
 
 
-#sha2 - hash key value
+#3.md5 - 32 bit hash key
+#not suggeted for if records more than 1 Million it can generate duplicates
+
+df_emp.withColumn('md5', md5 ( col('EMPNO').cast('string'))).show(truncate = False)
+
+
+#4.sha2 - hash key value
 #suggeted for huge data 256 0r 512 bits
 
-df.withColumn('sha2',sha2(col('EMPNO').cast('string'),256)).show(5,truncate = False)
-df.withColumn('sha2',sha2(col('EMPNO').cast('string'),512)).show(5,truncate = False)
+df_emp_sha_256 = df_emp.withColumn('sha2',sha2(col('EMPNO').cast('string'),256))
+df_emp_sha_256.show()
+df_emp_sha_512 = df_emp.withColumn('sha2',sha2( col('EMPNO').cast('string'),512))
+df_emp_sha_512.show()
 
 
-#row_number
-win = Window.orderBy( col('SAL').desc())
-df.withColumn('row_number',row_number().over(win)).show()
+#5.row_number
+
+win_2 = Window.orderBy('EMPNO')
+df_emp.withColumn( 'row_number' , row_number().over(win_2)).show()
 
 
 
@@ -278,15 +256,10 @@ loading data from source (daily) ----> Tansform -----> loading warehouse)
 
 # read data of day0 file
 
-day0 = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null') \
-                               .load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/input/employee_day0.csv')
-
-day0.show(5)
-
+emp_day0 = spark.read.format('csv').option('header',True).option('nullValue','null').option('inferSchema',True).load('/Volumes/workspace/sandeep/input/employee_day0.csv')
 
 # write partitioned data into warhouse employee table
-day0.write.partitionBy('DEPTNO').saveAsTable('emp_dept')
-
+emp_day0.write.partitionBy('DEPTNO').saveAsTable('employee')
 
 # query warhouse tables
 spark.sql('select * from emp_dept').show()
@@ -294,13 +267,10 @@ spark.sql('select count(*) from emp_dept').show()
 
 
 # read data of day1 file
-day1 = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null') \  
-                               .load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/input/employee_day1.csv')
-day1.show(5)
+emp_day1 = spark.read.format('csv').option('header',True).option('nullValue','null').option('inferSchema',True).load('/Volumes/workspace/sandeep/input/employee_day1.csv')
 
-
-# write partitioned data into warhouse employee table
-day1.write.mode('append').saveAsTable('emp_dept')
+# append into warhouse employee table
+emp_day1.write.mode('append').saveAsTable('employee')
 
 
 # query warhouse tables
@@ -311,8 +281,8 @@ spark.sql('select count(*) from emp_dept').show()
 
 24.fill missing data in textFile and convert into Dataframe:
 ============================================================
-df_miss = spark.read.format('csv').option('header',True).option('sep',' ').option('nullValue','null') \
-                             .load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/fill_missing.txt').fillna('missing_data')
+df_miss = spark.read.format('csv').option('sep',' ').load('/Volumes/workspace/sandeep/input/fill missing.txt').fillna('missing_data')
+
 df_miss.show()
 
 
@@ -341,23 +311,17 @@ df_json.count()
 
 27.Creating DataFrame from multiLine Json file:
 ===============================================
-df_multiLine = spark.read.format('json').option('multiline',True).option('inferSchema',True) \        
-                                        .load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/input/nested_json.json')
+df_mul_json = spark.read.format('json').option('multiline',True).option('inferSchema',True).load('/Volumes/workspace/sandeep/input/nested_json.json')
 
-df_multiLine.printSchema()
-df_multiLine.count()
-df_multiLine1 = df_multiLine.withColumn('batters_exp',explode('batters.batter'))\
-                            .withColumn('batter_id', col('batters_exp.id'))\
-                            .withColumn('batter_type' ,col('batters_exp.type'))\
-                            .drop('batters','batters_exp') 
-df_multiLine1.show()
+df_mul_json.show()
+
+from pyspark.sql.functions import *
+df_mul_json_1 = df_mul_json.withColumn('batters',explode('batters.batter')).withColumn('batters_id',col('batters.id')).withColumn('batters_type',col('batters.type'))
+df_mul_json_1.show()
 
 
-df_multiLine_final = df_multiLine1.withColumn('topping_exp',explode('topping'))\
-                                  .withColumn('topping_id', col('topping_exp.id'))\
-                                  .withColumn('topping_type',col('topping_exp.type'))\
-                                  .drop('topping','topping_exp')
-            
+df_mul_json_2 = df_mul_json_1.withColumn('topping',explode('topping')).withColumn('topping_id',col('topping.id')).withColumn('topping.type',col('topping.type'))
 
-df_multiLine_final.show() 
+df_mul_json_final = df_mul_json_2.drop("batters","topping")
+df_mul_json_final.show()
 

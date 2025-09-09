@@ -1,0 +1,141 @@
+
+1.Creating Pyspark Context:
+
+import findspark
+findspark.init()
+from pyspark import SparkContext
+
+#Create SparkContext
+sc = SparkContext.getOrCreate()
+sc
+
+
+#2.creating lists
+list = [ i for i in range(1,10)]
+
+
+print(list)
+print(type(list))
+
+#3.Creating RDD from lists
+#parallelize method is used to create a (RDD) from an existing or local collection (like a Python list or tuple) in the driver program.Used for testing purpose
+
+rdd = sc.parallelize(list)
+print('rdd:',rdd.collect())
+print('rdd_type',type(rdd))
+
+
+
+#To know All methods in rdd
+dir(rdd)
+
+#Get Help
+help(rdd)
+
+
+#creating rdd from list
+#parallelize method is used to create a (RDD) from an existing or local collection (like a Python list or tuple) in the driver program.Used for testing purpose.
+rdd = sc.parallelize(list)
+print(rdd.collect())
+type(rdd)
+
+#To know All methods in rdd
+dir(rdd)
+
+#Get Help
+help(rdd)
+
+
+#4.RDD Actions
+#a.collect (convert RDD to in-memory list)
+#b.take() (prints first elements)
+#c.top(prints highest elements)
+#d.takeSample (take some sample random values from list, if it's true it will repeat same value again ,False means unique)
+#e.Aggregate functions - gives single output value
+#min,max,sum(),mean(),stdev
+#count( no.of elements)
+#stats- complete info about count,mean,stdev,max,min
+#f.reduce -gives single output value,reduce that aggregate data set(RDD) element using function
+#g.CountByValue,countByKey - count of same values
+#h.fold - aggregate the elements of each partition
+#i.variance (all n values variance)
+#j.sample variance - (n-1) values variance
+#k.saveAsTextFile   -- text file format
+#l.saveAsPickleFile -- binary file format
+
+#Actions:
+print('rdd:',rdd.collect())
+print('first 5 elements:',rdd.take(5))
+print('top five elements:',rdd.top(5))
+print('mini element:',rdd.min())
+print('max element:',rdd.max())
+print('total no of elements:',rdd.count())
+print('sum of elements:',rdd.sum())
+print('mean of elements:',rdd.mean())
+print('stdev of elements:',rdd.stdev())
+print('random duplicate elements:',rdd.takeSample(True,5))
+print('random unique elements:',rdd.takeSample(False,5))
+print('list statatics',rdd.stats())
+print('population Variance:',rdd.variance())
+print('sample Variance',rdd.sampleVariance())
+print('reduce list to one element by sum:',rdd.reduce( lambda x,y:x+y))
+print('reduce list to one element by subtraction:',rdd.reduce(lambda x,y:x-y))
+Print('save as txt file',rdd.saveAsTextFile('C:\\Users\\nooka\csv'))
+print('save as binary file',rdd.saveAsPickleFile('C:\\Users\\nooka\binary'))
+
+#creating list pair
+list_pair = [(i,j) for i in range(1,5,2) for j in range(1,10,2)]
+rdd_pair= sc.parallelize(list_pair)
+rdd_pair.collect()
+print('count of values',rdd_pair.countByValue())
+print('count of keys',rdd_pair.countByKey())
+print(list_pair)
+print(type(list_pair))
+
+#fold
+from operator import *
+print('aggregate the elements of each partition:',rdd.fold(1,add))
+
+
+
+#5.RDD transformations
+
+
+
+#5.1.Map():Applies the function to each element of the RDD.Returns one result per input element.Output is still a list of lists.one to mapping.
+
+#example 1: 
+data = ["hello world", "pyspark map example", "flatMap is cool"]
+rdd_data = sc.parallelize(data)
+rdd_data.map(lambda x : x.split(' ')).collect()
+
+#example 2:  return new rdd with item name  and it's length
+data2 = ["apple", "banana", "cherry"]
+words = sc.parallelize(data2)
+words.map(lambda x : (x,len(x))).collect()
+
+#example 3:return iteam range
+nums = sc.parallelize([1, 2, 3])
+nums.map(lambda x: range(x)).collect()
+
+#5.2.flatMap():Applies the function to each element of the RDD.returns a single list of all results.big list . many to one
+
+#example 1:words final list
+data = ["hello world", "pyspark map example", "flatMap is cool"]
+rdd_data = sc.parallelize(data)
+rdd_data.flatMap(lambda x : x.split(' ')).collect()
+
+
+#example 2:return item range final list
+nums = sc.parallelize([1,2,3,4])
+nums.flatMap(lambda x : range(x)).collect()
+
+#5.3.filter:
+
+nums = sc.parallelize([i for i in range(10)])
+
+even_num = nums.filter( lambda x : x%2 == 0)
+even_num.collect()
+
+odd_num = nums.filter(lambda x: x%2 != 0)
+odd_num.collect()
