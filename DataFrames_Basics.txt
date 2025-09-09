@@ -5,100 +5,101 @@
 
 from pyspark.sql import SparkSession
 
-spark = SparkSession.bulider.master('yarn/local').appName('dataframe').getOrCreate()
+# Create SparkSession
+spark = SparkSession.builder.master("local").appName("dataframe").getOrCreate()
 
 
 
 
-2.Creating dataFrame from hdfs Location:
-========================================
-reading data from hdfs remote server
-df_hdfs = spark.read.format('csv').option().load('hdfs://172.16.38.131.8020/bigdata/cse/app_prod/cse.app_prod.csv')
-
-
-
-3.Read CSV data into dataframe without header, schema:
+2.Creating dataFrame from file Location and show type:
 ======================================================
-spark.read.format('csv').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/employee.csv').show(10)
+
+df = spark.read.format('csv').load('/Volumes/workspace/sandeep/input/employee.csv')
+df.display()
+type(df)
 
 
+3.difference between show,display :
+===================================
+#Use df.show() → Anywhere, text output in console.
+df.show(5)
 
-4.Read csv data into dataframe with Header and schema.Fetch type,row count,10 rows and printSchema:
-===================================================================================================
-df_csv = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/employee.csv')
 
-#ten rows
-df_csv.show(10)
+#Use df.display() → Only in Databricks, gives a nice UI table and visualization options.
+df.display()
 
-#printSchema?
+
+4.Read csv data into dataframe with Header,inferschema,Null value. show count, printSchema ,5 records:
+======================================================================================================
+df_csv = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('/Volumes/workspace/sandeep/sample/employee.csv')
+
 df_csv.printSchema()
 
-#count
+df_csv.show(5)
+
 df_csv.count()
 
-#show type
-type(df_csv)
 
 
-
-5.Read csv dataframe with pipe seprated values.Fetch row count,10 rows and printSchema:
+5.Read csv dataframe with pipe seprated values.Fetch row count,5 rows and printSchema:
 =======================================================================================
-df_pipe = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').option('sep','|')
-.load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/emp_pipe.txt')
+df_pipe = spark.read.format('csv').option('sep','|').option('header',True).option('inferSchema',True).option('NullValue','null').load('/Volumes/workspace/sandeep/sample/emp_pipe.txt')
 
-df_pipe.show(10)
+df_pipe.show(5)
+
 df_pipe.printSchema()
+
 df_pipe.count()
 
 
-
-6.Read csv dataframe with double pipe seprated values ,Fetch row count,10 rows and printSchema:
+6.Read csv dataframe with double pipe seprated values ,Fetch row count,5 rows and printSchema:
 ===============================================================================================
-df_double = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','nul').option('sep','||').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/emp_double_pipe.txt')
+df_double_pipe = spark.read.format('csv').option('sep','||').option('header',True).option('inferSchema',True).option('NullValue','null').load('/Volumes/workspace/sandeep/sample/emp_double_pipe.txt')
 
-df_double.show(10)
-df_double.count()
-df_double.printSchema()
+df_double_pipe.show(5)
+df_double_pipe.printSchema()
+df_double_pipe.count()
 
 
 
 7.Inspect Data:
 ===============
 #show dataframe
-df_double.show(10)
+df.display()
+df.show()
 
 #printSchema
-df_double.printSchema()
+df_pipe.printSchema()
 
 #column names
-df_double.columns
+df_pipe.columns
 
-#column name with datatypes
-df_double.dtypes
+#columns with their data types
+df_pipe.dtypes
 
 #firstrow
-df_double.first()
+df_double_pipe.first()
 
 #head - first five rows
-df_double.head(5)
+df_double_pipe.head(5)
 
 #take any random 3 rows
-df_double.take(3)
+df_double_pipe.take(3)
 
 #count no.of rows
-df_double.count()
+df_double_pipe.count()
 
 #count distinct no.of rows
-df_double.distinct().count()
+df_double_pipe.distinct().count()
 
 #tail - last two rows
-df_double.tail(2)
+df_double_pipe.tail(2)
 
 # compute summery satistics for dataframe
-df_double.describe().show()
+df_csv.describe().show()
 
 #explain physical plan and logical plan
-df_double.explain()
+df_csv.explain(True)
 
 
 
@@ -115,130 +116,138 @@ print(fun.show())
 
 9.select operations:
 ====================
-df_double.select( (col('MGR')/2).alias('new_mgr'),(col('sal')*2).alias('new_salary')).show(5)
+df_double_pipe.select(( col('MGR') * 2).alias ('new_mgr'),(col('SAL') + 1000).alias ('New_SAl')).show(1)
 
 
 
 10.Adding new columns with default values:
 ==========================================
-df_double1 = df_double.withColumn('source',lit('test'))
-df_double1.show(10)
+df_double_pipe = df_double_pipe.withColumn('source',lit('BOS'))
+df_double_pipe.show()
 
 
 
-11.Adding new columns:
-======================
-df_double2 = df_double.withColumn('NEW_MGR', col('MGR')*2).withColumn('NEW_SAL',col('SAL')/10)
-df_double2.show(10)
-
+11.Adding new columns from another Columns:
+===========================================
+df_double_pipe = df_double_pipe.withColumn('New_Sal',col('SAL')*2).withColumn('New_mgr',col('MGR')/2)
+df_double_pipe.show()
 
 
 12.dropping columns:
 ====================
-df_double3 =df_double2.drop('MGR','SAL')
-df_double3.show(10)
+df_double_pipe = df_double_pipe.drop('MGR','SAL')
+df_double_pipe.show()
 
 
 
 13.Renamed Column Names:
 ========================
-df_double4= df_double3.withColumnRenamed('NEW_SAL','SALARY').withColumnRenamed('NEW_MGR','MANAGER')
-df_double4.show(10)
+df_double_pipe = df_double_pipe.withColumnRenamed('New_Sal','Salary').withColumnRenamed('mgr','Commission')
+df_double_pipe.show()
 
 
 
 14.drop null values from dataFrame:
 ===================================
 
-# how = any ,it drops any null value in dataframe
-df_drop_any =  df_pipe.dropna(how = 'any')
-df_drop_any.count()
+#how = any ,it drops any null value in dataframe
+df_double_pipe_drop1=df_double_pipe.dropna(how ='any')
+df_double_pipe_drop1.show()
+df_double_pipe_drop1.count()
 
 
-# how =all,drops the rows with all nulls in it
-df_drop_all = df_pipe.dropna(how = 'all')
-df_drop_all.count()
+#how =all,drops the rows with all nulls in it
+df_double_pipe_drop2=df_double_pipe.dropna(how='all')
+df_double_pipe_drop2.show()
+df_double_pipe_drop2.count()
 
 
-# how =all,drops the rows with custom nulls in it
-df_drop_custom = df_pipe.dropna(how = 'any' ,thresh = 4)
-df_drop_custom.count()
-
+#how =all,drops the rows with custom nulls in it
+df_double_pipe_drop3 = df_double_pipe.dropna(how = 'any',thresh= 3 )
+df_double_pipe_drop3.show()
+df_double_pipe_drop3.count()
 
 #drop the specific columns null values
-df_drop_column = df_pipe.dropna(how = 'any',subset=['UPDATED_DATE','HIREDATE'])
-df_drop_column.count()
+df_double_pipe_drop4 = df_double_pipe.dropna(how='any',subset=['salary','New_mgr'])
+df_double_pipe_drop4.show()
+df_double_pipe_drop4.count()
 
 
 
 15.fill null values in dataFrame:
 ================================
-df_fill = df_pipe.fillna('MISSING_VALUE',['JOB','ENAME']).fillna(7000,'MGR').fillna(1000,'SAL')
-df_fill.show()
+df_double_pipe.fillna( 0,subset=['Salary','DEPTNO','New_mgr'] ).fillna('missing_value',subset=['ENAME','JOB']).show()
+
 
 
 
 16.Filter operations:
 =====================
 
+# ~ not operator
+df_double_pipe.filter( ~ (col('Salary') == 3000) ).show()
+
+
+# == operator
+df_double_pipe.filter( col('Salary') == 3000 ).show()
+
+
 #salary of people greter than 4000
-df_pipe.filter(col('SAL') >4000).show()
+df_double_pipe.filter( col('salary') >4000).show()
 
 
 # & operator
-#show employee details who's salar greater than 2500 and job is manager
-df_pipe.filter( (col('JOB') == 'MANAGER') & (col('SAL') > 2500)).show()
+#show employee details who's salary greater than 2500 and job is manager
+df_double_pipe.filter( (col("JOB") == 'MANAGER') & (col("Salary") > 2500 ) ).show()
 
 
 # & operator
 #show employee details who's salary less than 2000 and salary should be greater than 1000
-df_pipe.filter((col('SAL') <2000) & ( col('SAL')>1000)).show()
+df_double_pipe.filter( (col('Salary')<2000) & (col('Salary')>1000)).show()
 
 
 # | operator
 #show employee details who's salary less than 2000 or salary should be greater than 1000
-df_pipe.filter((col('SAL')>2000) | (col('SAL')<1000)).show()
+df_double_pipe.filter( (col('Salary')<2000) | ( col('Salary')>1000 ) ).show()
 
 
-#not operator
-df_pipe.filter( ~ (col('JOB') == 'MANAGER')).show()
-
-
+# null operator
 # filter individual Columns null values
-df_pipe.filter('HIREDATE is null').show()
-df_pipe.filter('MGR is null').show()
+
+df_double_pipe.filter('HIREDATE is Null').show()
+df_double_pipe.filter('New_mgr is Null').show()
 
 
 
 17.GroupBy operations:
 ======================
 #groupby deptno and people count
-df_pipe.groupby('DEPTNO').count().show()
+df_double_pipe.groupBy('DEPTNO').count().show()
 
 
 #groupby deptno and avg salary
-df_pipe.groupby('DEPTNO').avg('SAL').show()
+df_double_pipe.groupBy("DEPTNO").avg('Salary').show()
 
 
 #groupby job role and people count
-df_pipe.groupBy('JOB').count().show()
+df_double_pipe.groupBy('JOB').count().show()
 
 
 #Group by job role and avg of salaries
-df_pipe.groupby('JOB').avg('SAL').alias('AVG_SAL').show()
+df_double_pipe.groupBy('JOB').avg('Salary').show()
 
 
 
 18.sort/orderby operations - In pyspark orderBy and sort are same:
 ==================================================================
-df_pipe.sort(col('SAL').desc()).show(5)
-df_pipe.orderBy(col('SAL').desc()).show(5)
+df_double_pipe.orderBy(col('Salary').desc()).show()
+df_double_pipe.sort(col('JOB').desc()).show()
 
 
 
 19.sort by/sortwithinpartitions operations- In pyspark sortwithinpartitions same as sortby:
-====================
-df_pipe.sortWithinPartitions( col('SAL').desc()).show()
+===========================================================================================
+df_double_pipe.sortWithinPartitions(col('Salary').desc()).show()
 
 
 
@@ -246,8 +255,8 @@ df_pipe.sortWithinPartitions( col('SAL').desc()).show()
 ===============
 repartition : is a wide transformation : create new partitions,Data shuffle will happen,used for increase/decrease the partitions, we can repartition based on column specific to increse the performence
 
-df_pipe1 = df_pipe.repartition(3).withColumn('repartitions',spark_partition_id())
-df_pipe1.show(10)
+df_double_pipe_repart = df_double_pipe.repartition(4).withColumn('partition',spark_partition_id())
+df_double_pipe_repart.groupBy('partition').count().show()
 df_pipe1.rdd.getNumPartitions()
 
 
@@ -256,26 +265,27 @@ df_pipe1.rdd.getNumPartitions()
 ============
 coalesce : is a Narrow transformation : adjust data in existing partition,No shuffling ,By defult it will used for decrease the partitions.
 
-df_pipe2 = df_pipe1.coalesce(1).withColumn('coalesce',spark_partition_id())
-df_pipe2.show()
+df_double_pipe_repart_coal = df_double_pipe.coalesce(1)
+df_double_pipe_repart_coal.groupBy('partition').count().show()
+
 df_pipe2.rdd.getNumPartitions()
 
 
 
 22.joining two dataframes - Generate Revenue Column and order by highest Revenue:
 ================================================================================
-df_product = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/product_info_1.csv')
-
-df_sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('nullValue','null').load('dbfs:/FileStore/shared_uploads/nookala382@gmail.com/sales_data_1.csv')
-
-df_product.show(10)
+df_product = spark.read.format('csv').option('header',True).option('inferSchema',True).option('NullValue','null').load('/Volumes/workspace/sandeep/sample/product_info_2.csv')
+df_product.show()
 df_product.printSchema()
-df_sale.show(10)
+df_product.count()
+
+df_sale = spark.read.format('csv').option('header',True).option('inferSchema',True).option('NullValue','null').load('/Volumes/workspace/sandeep/sample/sales_data_2.csv')
+df_sale.show()
 df_sale.printSchema()
+df_sale.count()
 
-product_sale = df_product.join(df_sale,df_product.product_id == df_sale.product_id,'inner').drop(df_sale.product_id).withColumn('Revenue', col('unit_price')*col('qty')).orderBy(col('Revenue').desc())
-product_sale.show()
-
+poduct_sales = df_product.join(df_sale,df_product.product_id == df_sale.product_id,'inner').drop(df_sale.sl_no).drop(df_sale.product_id).withColumn( 'Revenue', col('unit_price')* col('qty')).orderBy( col('Revenue').desc())
+poduct_sales.show()
 
 
 23.Save Dataframe into hive table:
@@ -286,10 +296,27 @@ product_sale.write.partitionBy('product_name').saveAsTable('product_sale')
 
 24.Read Dataframe from Hive table:
 =================================
-spark.read.table('product_sale').show()
+df_hive = spark.read.table('product_sales')
+df_hive.show()
 
 
 
 25.Pivot Table : year wise each product revenue:
 ================================================
-product_sale.groupBy('year').pivot('product_name').sum('Revenue').show(truncate = False)
+product_sales.pivot = product_sales.groupBy('year').pivot('product_name').sum('Revenue')
+product_sales.pivot.show()
+
+
+26.Save parquet files in external path:
+=======================================
+product_sales.write.format('parquet').mode('overwrite').option('compression','snappy').save('/Volumes/workspace/sandeep/sample/Ouput/')
+
+
+
+27.create external table and load data from external path:
+==========================================================
+spark.sql("""
+  CREATE TABLE product_sales_ext
+  USING PARQUET
+  LOCATION '/Volumes/workspace/sandeep/sample/Ouput/'
+""")
