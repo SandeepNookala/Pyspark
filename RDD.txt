@@ -25,7 +25,6 @@ print('rdd:',rdd.collect())
 print('rdd_type',type(rdd))
 
 
-
 #To know All methods in rdd
 dir(rdd)
 
@@ -33,17 +32,6 @@ dir(rdd)
 help(rdd)
 
 
-#creating rdd from list
-#parallelize method is used to create a (RDD) from an existing or local collection (like a Python list or tuple) in the driver program.Used for testing purpose.
-rdd = sc.parallelize(list)
-print(rdd.collect())
-type(rdd)
-
-#To know All methods in rdd
-dir(rdd)
-
-#Get Help
-help(rdd)
 
 
 #4.RDD Actions
@@ -102,7 +90,7 @@ print('aggregate the elements of each partition:',rdd.fold(1,add))
 
 
 
-#5.1.Map():Applies the function to each element of the RDD.Returns one result per input element.Output is still a list of lists.one to mapping.
+#5.1.Map():Applies the function to each element of the RDD.Return a new distributed dataset.Output is still a list of lists.
 
 #example 1: 
 data = ["hello world", "pyspark map example", "flatMap is cool"]
@@ -118,8 +106,7 @@ words.map(lambda x : (x,len(x))).collect()
 nums = sc.parallelize([1, 2, 3])
 nums.map(lambda x: range(x)).collect()
 
-#5.2.flatMap():Applies the function to each element of the RDD.returns a single list of all results.big list . many to one
-
+#5.2.flatMap():Applies the function to each element of the RDD.returns a single list of all results.big list.
 #example 1:words final list
 data = ["hello world", "pyspark map example", "flatMap is cool"]
 rdd_data = sc.parallelize(data)
@@ -139,3 +126,167 @@ even_num.collect()
 
 odd_num = nums.filter(lambda x: x%2 != 0)
 odd_num.collect()
+
+
+#example 3: 
+num = [1,2,3,4,5,6,7,8,9]
+rdd_num = sc.parallelize(num,4) #distribute list into 4 partitions
+rdd_num.glom().collect()    #glom shows no.of partition
+
+
+#5.4.mapPartitions - Similar to map but runs separetely on each partition
+
+#partition wise total sum
+
+def f(x) : yield sum(x)
+rdd_num.mapPartitions(f).collect()
+
+
+#5.4.mapPartitions - Similar to map but runs separetely on each partition
+
+#partition wise total sum
+def f(x) : yield sum(x)
+rdd_num.mapPartitions(f).collect()
+
+
+#5.5.mapPartitionWIthIndex - Similar to Mappartition ,but also provides an integer value is index of partition
+
+def f(index,x):yield (index,sum(x))
+rdd_num.mapPartitionsWithIndex(f).collect()
+
+
+def f(index,x):yield (index,min(x))
+rdd_num.mapPartitionsWithIndex(f).collect()
+
+
+#5.6.sample - Sample a fraction fraction of the data,sample(withreplacement.fraction,seed)  ,if (with replacement) - true - will repeat same value ,else (withreplacement) -False - unique values
+
+rdd_repeat = rdd_list.sample(True,1)
+rdd_unique  = rdd_list.sample(False,1)
+print(rdd_repeat.collect())
+
+
+#5.7.union -Return a new dataset that contains the union of the elements in the source dataset and the argument.
+
+rdd_union = rdd_unique.union(rdd_repeat)
+rdd_union.collect()
+
+
+#5.8.union -Return a new dataset that contains the union of the elements in the source dataset and the argument.
+
+rdd_union.distinct().collect()
+
+
+#5.9.intersection-Return a new RDD that contains the intersection of elements in the source dataset and the argument.
+
+rdd_unique = sc.parallelize([1, 2, 3, 4])
+rdd_repeat = sc.parallelize([3, 4, 5, 6])
+rdd_unique.intersection(rdd_repeat).collect()
+
+
+#5.10.GroupByKey
+
+data3 = [("apple", 1), ("banana", 2), ("apple", 3), ("orange", 4), ("banana", 5)]
+rdd_data3 = sc.parallelize(data3) 
+group_rdd = rdd_data3.groupByKey()
+result = group_rdd.mapValues(list).collect()
+print(rdd_data3.collect())
+print(result)
+print(rdd_unique.collect())
+
+
+#6.Spark Caching
+
+#caching -caching is  used to save the data(RDD/Dataframe/Dataset) in a cluster-wide in memory,
+#cache() method default saves data in MEMORY_ONLY.
+#Used to store small amount od data. This is Very Useful for accessing repeated data .
+#such as querying a small data set or when running an iterative algorithm
+
+
+#7.Spark Persist
+# same like cahe ( stores data in memeory) but we can store large amout of  data
+# persist() method is used to store it to the user-defined storage levels like (memory only , disk only ,memory and disk only etc)
+
+rdd.persist(pyspark.StorageLevel.MEMORY_ONLY)
+
+#rdd.persist(pyspark.StorageLevel.DISK_ONLY)
+
+#rdd.persist(pyspark.StorageLevel.MEMORY_AND_DISK)
+
+
+# clears cache and persist data manually
+rdd.unpersist()
+
+
+#8.Broadcast variables
+
+# allow programmer to keep a read only variable cached on each machine rather than shipping a copy of it with tasks
+# spark useses efficient broadcast algoritham to reduce communication cost
+
+
+broad = sc.broadcast([1,2,3,4,5,6])
+
+print(broad.value)
+
+
+# clear the boarcast variables by using unpersist or destroy
+
+#broad.unpersist()
+#OR 
+broad.destroy
+
+
+#9.Accumulators
+from pyspark.accumulators import Accumulator
+
+accum=sc.accumulator(10)
+
+rdd.foreach(lambda x:accum.add(x))
+print(accum.value)
+
+
+#10.coalesce
+
+rdd_cal = rdd.coalesce(3)
+rdd_cal.getNumPartitions()
+rdd_cal.glom().collect()
+
+
+#11.repartition
+rdd_repart = rdd.repartition(3)
+rdd_repart.getNumPartitions()
+rdd_repart.glom().collect()
+
+
+#12.Transformations - Joins
+J1 = sc.parallelize([('A',2),('B',3),('C',4),('D',5),('E',6),('F',7)])
+
+J2 = sc.parallelize([('C',2),('D',3),('E',4),('F',5),('G',6),('H',7)])
+
+
+
+
+#join/inner Join - takes two pair of rdd ,return only matched records from both RDD's
+
+innerjoin = J1.join(J2)
+innerjoin.collect()
+
+# leftouterjoin  - returns matched records from both rdd and unmatched records from left rdd
+
+leftjoin = J1.leftOuterJoin(J2)
+leftjoin.collect()
+
+#RightOuterJoin - returns matched records from both rdd and unmatched from right rdd
+
+rightjoin = J1.rightOuterJoin(J2)
+rightjoin.collect()
+
+#fullOuterJoin - returned all records from both RDD'S
+
+fulljoin = J1.fullOuterJoin(J2)
+fulljoin.collect()
+
+#cartesian join - cross product of both elements of RDD
+
+cartisanjoin = J1.cartesian(J2)
+cartisanjoin.collect()
